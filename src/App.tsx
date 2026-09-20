@@ -90,6 +90,7 @@ const markdownComponents: Components = {
 }
 
 type ThemeProps = { dark: boolean; onToggle: () => void }
+const routerBasename = import.meta.env.BASE_URL === '/' ? undefined : import.meta.env.BASE_URL.replace(/\/$/, '')
 
 function ThemeIcon({ dark }: { dark: boolean }) {
   return dark ? (
@@ -207,7 +208,7 @@ function App() {
   }, [dark])
 
   const themeProps = { dark, onToggle: () => setDark((value) => !value) }
-  return <BrowserRouter><Routes><Route path="/" element={<HomePage {...themeProps} progress={progress} />} /><Route path="/week/:weekId" element={<WeekPage {...themeProps} progress={progress} />} /></Routes></BrowserRouter>
+  return <BrowserRouter basename={routerBasename}><Routes><Route path="/" element={<HomePage {...themeProps} progress={progress} />} /><Route path="/week/:weekId" element={<WeekPage {...themeProps} progress={progress} />} /></Routes></BrowserRouter>
 }
 
 export default App
