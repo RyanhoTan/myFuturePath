@@ -11,7 +11,9 @@ import tsx from 'react-syntax-highlighter/dist/esm/languages/prism/tsx'
 import typescript from 'react-syntax-highlighter/dist/esm/languages/prism/typescript'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { BrowserRouter, Link, Navigate, Route, Routes, useParams } from 'react-router-dom'
-import trainingPlan from './content/training-plan.md?raw'
+import { trainingWeeks } from './content/exercises'
+import { ExerciseDay } from './components/ExerciseDay'
+import { useExerciseProgress, type ExerciseProgress } from './state/useExerciseProgress'
 import './App.css'
 
 SyntaxHighlighter.registerLanguage('javascript', javascript)
@@ -40,10 +42,6 @@ const plans: WeekPlan[] = [
   { id: 'week-5', week: '05', title: '真实接口开发', description: '从手动请求过渡到 React Query。', topics: ['GET 请求', '搜索与分页', 'useQuery', 'mutation'], color: 'coral' },
   { id: 'week-6', week: '06', title: 'TS、Git 与工程化', description: '把基础接入工程，并完成最终考试。', topics: ['TypeScript', '泛型', 'Git', 'pnpm / Vite'], color: 'mint' },
 ]
-
-const weekMarkdown = new Map(
-  [...trainingPlan.matchAll(/^# 第 (\d+) 周：[\s\S]*?(?=^# 第 \d+ 周：|(?![\s\S]))/gm)].map(([section, week]) => [`0${week}`, section.trim()]),
-)
 
 function CodeBlock({ language, code }: { language: string; code: string }) {
   const [copied, setCopied] = useState(false)
@@ -135,15 +133,18 @@ function HomePage({ dark, onToggle }: ThemeProps) {
   )
 }
 
-function WeekPage({ dark, onToggle }: ThemeProps) {
+function WeekPage({ dark, onToggle, progress }: ThemeProps & { progress: ExerciseProgress }) {
   const { weekId } = useParams()
   const plan = plans.find((item) => item.id === weekId)
+  const week = trainingWeeks.find((item) => item.number === Number(plan?.week))
 
   useEffect(() => {
     window.scrollTo({ top: 0 })
   }, [weekId])
 
-  if (!plan) return <Navigate to="/" replace />
+  if (!plan || !week) return <Navigate to="/" replace />
+
+  const finishedDays = week.days.filter((day) => progress.completed[day.id]).length
 
   return (
     <div className={`app-shell ${dark ? 'theme-dark' : ''}`}>
@@ -155,7 +156,16 @@ function WeekPage({ dark, onToggle }: ThemeProps) {
           <span className={`detail-color ${plan.color}`}><small>WEEK</small>{plan.week}</span>
         </div>
         <div className="detail-rule"><span aria-hidden="true">!</span><p><b>训练规则</b>每题先自己写，卡 30 分钟再问 AI。答案不要提前看。</p></div>
-        <article className="markdown-content"><ReactMarkdown components={markdownComponents}>{(weekMarkdown.get(plan.week) ?? '').replace(/^# 第 .*?\n+/, '')}</ReactMarkdown></article>
+        <div className="week-completion">
+          <span role="status" aria-live="polite">本周已完成 <strong>{finishedDays} / {week.days.length}</strong> 天</span>
+          <span>完成后自动收起，可随时展开或取消完成</span>
+        </div>
+        {progress.saveError && <p className="progress-error" role="alert">暂时无法保存到本地，当前进度仅在本次页面中保留。</p>}
+        {week.intro && <div className="markdown-content week-note"><ReactMarkdown components={markdownComponents}>{week.intro}</ReactMarkdown></div>}
+        <div className="day-list">
+          {week.days.map((day) => <ExerciseDay key={day.id} day={day} progress={progress} components={markdownComponents} />)}
+        </div>
+        {week.outro && <div className="markdown-content week-note"><ReactMarkdown components={markdownComponents}>{week.outro}</ReactMarkdown></div>}
       </main>
     </div>
   )
@@ -170,6 +180,7 @@ function getInitialTheme() {
 
 function App() {
   const [dark, setDark] = useState(getInitialTheme)
+  const progress = useExerciseProgress()
 
   useEffect(() => {
     window.localStorage.setItem('myFuturePath-theme', dark ? 'dark' : 'light')
@@ -177,7 +188,7 @@ function App() {
   }, [dark])
 
   const themeProps = { dark, onToggle: () => setDark((value) => !value) }
-  return <BrowserRouter><Routes><Route path="/" element={<HomePage {...themeProps} />} /><Route path="/week/:weekId" element={<WeekPage {...themeProps} />} /></Routes></BrowserRouter>
+  return <BrowserRouter><Routes><Route path="/" element={<HomePage {...themeProps} />} /><Route path="/week/:weekId" element={<WeekPage {...themeProps} progress={progress} />} /></Routes></BrowserRouter>
 }
 
 export default App
