@@ -3,13 +3,10 @@ import { motion, useReducedMotion } from 'motion/react'
 import ReactMarkdown, { type Components, type ExtraProps } from 'react-markdown'
 import { remarkExerciseTasks, type TrainingDay } from '../content/exercises'
 import type { ExerciseProgress } from '../state/useExerciseProgress'
+import { Checkmark, CompletionButton } from './CompletionButton'
 
 type DayContextValue = { day: TrainingDay; progress: ExerciseProgress; toggleTask: (id: string) => void }
 const DayContext = createContext<DayContextValue | null>(null)
-
-function Checkmark() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4.5 10 3.5 3.5 7.5-7" /></svg>
-}
 
 function TaskItem({ node, children, ...props }: ComponentPropsWithoutRef<'li'> & ExtraProps) {
   const context = useContext(DayContext)
@@ -57,8 +54,10 @@ const titleComponents: Components = {
 
 export function ExerciseDay({ day, progress, components }: { day: TrainingDay; progress: ExerciseProgress; components: Components }) {
   const done = Boolean(progress.completed[day.id])
-  const [expandedOverride, setExpandedOverride] = useState<boolean | null>(null)
-  const expanded = expandedOverride ?? !done
+  const [disclosure, setDisclosure] = useState({ done, expanded: !done })
+  // Reset manual review expansion on bulk completion or undo, too.
+  if (disclosure.done !== done) setDisclosure({ done, expanded: !done })
+  const expanded = disclosure.done === done ? disclosure.expanded : !done
   const reduceMotion = useReducedMotion()
   const completeButton = useRef<HTMLButtonElement>(null)
   const dayComponents = useMemo(() => ({ ...components, li: TaskItem }), [components])
@@ -68,7 +67,6 @@ export function ExerciseDay({ day, progress, components }: { day: TrainingDay; p
   const toggleTask = (id: string) => {
     const completesDay = !progress.completed[id] && day.tasks.every((task) => task.id === id || progress.completed[task.id])
     if (completesDay) completeButton.current?.focus({ preventScroll: true })
-    setExpandedOverride(null)
     progress.toggleTask(day, id)
   }
 
@@ -80,21 +78,20 @@ export function ExerciseDay({ day, progress, components }: { day: TrainingDay; p
           {day.tasks.length > 0 && <span className="day-task-count">{finishedTasks} / {day.tasks.length} 题已完成</span>}
         </div>
         <div className="day-actions">
-          <button
-            ref={completeButton}
-            className="day-complete"
-            type="button"
-            aria-label={`${done ? '取消完成' : '标记完成'} Day ${day.number}`}
-            aria-pressed={done}
-            onClick={() => { setExpandedOverride(null); progress.toggleDay(day) }}
-          ><span className="check-circle"><Checkmark /></span>{done ? '已完成' : '标记完成'}</button>
+          <CompletionButton
+            buttonRef={completeButton}
+            label={`Day ${day.number}`}
+            done={done}
+            description="将当天全部练习标记为已完成，并自动收起题目。之后仍可展开复习或取消完成。"
+            onChange={(completed) => progress.setDayCompleted(day, completed)}
+          />
           <button
             className="day-disclosure"
             type="button"
             aria-label={`${expanded ? '收起' : '展开'} Day ${day.number} 题目`}
             aria-expanded={expanded}
             aria-controls={bodyId}
-            onClick={() => setExpandedOverride(!expanded)}
+            onClick={() => setDisclosure({ done, expanded: !expanded })}
           >{expanded ? '收起' : '展开'}<motion.svg viewBox="0 0 20 20" aria-hidden="true" initial={false} animate={{ rotate: expanded ? 180 : 0 }} transition={reduceMotion ? { duration: 0 } : { type: 'spring', bounce: 0, duration: .3 }}><path d="m5 7.5 5 5 5-5" /></motion.svg></button>
         </div>
       </header>

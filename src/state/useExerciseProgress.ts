@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { trainingWeeks, type TrainingDay } from '../content/exercises'
+import { trainingWeeks, type TrainingDay, type TrainingWeek } from '../content/exercises'
 
 export const PROGRESS_KEY = 'myFuturePath-exercise-progress-v1'
 export type CompletedExercises = Record<string, true>
@@ -52,13 +52,24 @@ export function useExerciseProgress() {
     return () => window.removeEventListener('storage', sync)
   }, [])
 
-  const toggleDay = useCallback((day: TrainingDay) => {
+  const setDayCompleted = useCallback((day: TrainingDay, done: boolean) => {
     const next = { ...current.current }
-    const done = !next[day.id]
     for (const id of [day.id, ...day.tasks.map((task) => task.id)]) {
       if (done) next[id] = true
       else delete next[id]
     }
+    save(next)
+  }, [save])
+
+  const setWeekCompleted = useCallback((week: TrainingWeek, done: boolean) => {
+    const next = { ...current.current }
+    for (const day of week.days) {
+      for (const id of [day.id, ...day.tasks.map((task) => task.id)]) {
+        if (done) next[id] = true
+        else delete next[id]
+      }
+    }
+    // Week completion is derived from its days, keeping existing saved progress compatible.
     save(next)
   }, [save])
 
@@ -72,7 +83,7 @@ export function useExerciseProgress() {
     save(next)
   }, [save])
 
-  return { completed, saveError, toggleDay, toggleTask }
+  return { completed, saveError, setDayCompleted, setWeekCompleted, toggleTask }
 }
 
 export type ExerciseProgress = ReturnType<typeof useExerciseProgress>

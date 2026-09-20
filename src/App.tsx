@@ -11,8 +11,9 @@ import tsx from 'react-syntax-highlighter/dist/esm/languages/prism/tsx'
 import typescript from 'react-syntax-highlighter/dist/esm/languages/prism/typescript'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { BrowserRouter, Link, Navigate, Route, Routes, useParams } from 'react-router-dom'
-import { trainingWeeks } from './content/exercises'
+import { trainingWeeks, type TrainingWeek } from './content/exercises'
 import { ExerciseDay } from './components/ExerciseDay'
+import { CompletionButton } from './components/CompletionButton'
 import { useExerciseProgress, type ExerciseProgress } from './state/useExerciseProgress'
 import './App.css'
 
@@ -106,7 +107,19 @@ function ThemeControl({ dark, onToggle }: ThemeProps) {
   )
 }
 
-function HomePage({ dark, onToggle }: ThemeProps) {
+function WeekCompletionButton({ week, progress }: { week: TrainingWeek; progress: ExerciseProgress }) {
+  const done = week.days.every((day) => progress.completed[day.id])
+  return <CompletionButton
+    label={`第 ${week.number} 周`}
+    variant="week"
+    done={done}
+    description={`将第 ${week.number} 周的 ${week.days.length} 天及全部小题标记为已完成，并自动收起题目。其他周不受影响，之后仍可展开复习或取消完成。`}
+    resetDescription={`将第 ${week.number} 周的 ${week.days.length} 天及全部小题恢复为未完成，包括之前单独完成的小题。其他周不受影响。`}
+    onChange={(completed) => progress.setWeekCompleted(week, completed)}
+  />
+}
+
+function HomePage({ dark, onToggle, progress }: ThemeProps & { progress: ExerciseProgress }) {
   return (
     <div className={`app-shell ${dark ? 'theme-dark' : ''}`}>
       <ThemeControl dark={dark} onToggle={onToggle} />
@@ -116,16 +129,22 @@ function HomePage({ dark, onToggle }: ThemeProps) {
             <div><span className="home-brand">myFuturePath</span><h1>6 周训练题单</h1></div>
             <p>点击卡片查看每天的题目与代码练习。</p>
           </div>
+          {progress.saveError && <p className="progress-error" role="alert">暂时无法保存到本地，当前进度仅在本次页面中保留。</p>}
           <div className="timeline">
-            {plans.map((plan, index) => (
-              <Link className={`plan-card ${plan.color}`} key={plan.id} to={`/week/${plan.id}`}>
+            {plans.map((plan, index) => {
+              const week = trainingWeeks[index]
+              const done = week.days.every((day) => progress.completed[day.id])
+              return <div className={`plan-card ${plan.color} ${done ? 'is-complete' : ''}`} key={plan.id}>
                 <span className="plan-number">{String(index + 1).padStart(2, '0')}</span>
                 <span className="week-label">第 {plan.week} 周</span>
-                <span className="plan-heading"><strong>{plan.title}</strong><small>{plan.description}</small></span>
+                <span className="plan-heading"><strong><Link className="plan-card-link" to={`/week/${plan.id}`}>{plan.title}</Link></strong><small>{plan.description}</small></span>
                 <span className="plan-topics">{plan.topics.map((topic) => <span key={topic}>{topic}</span>)}</span>
-                <span className="plan-open">查看 5 天练习<i aria-hidden="true">→</i></span>
-              </Link>
-            ))}
+                <div className="plan-card-actions">
+                  <span className="plan-open">{done ? '复习' : '查看'} 5 天练习<i aria-hidden="true">→</i></span>
+                  <WeekCompletionButton week={week} progress={progress} />
+                </div>
+              </div>
+            })}
           </div>
         </section>
       </main>
@@ -158,7 +177,7 @@ function WeekPage({ dark, onToggle, progress }: ThemeProps & { progress: Exercis
         <div className="detail-rule"><span aria-hidden="true">!</span><p><b>训练规则</b>每题先自己写，卡 30 分钟再问 AI。答案不要提前看。</p></div>
         <div className="week-completion">
           <span role="status" aria-live="polite">本周已完成 <strong>{finishedDays} / {week.days.length}</strong> 天</span>
-          <span>完成后自动收起，可随时展开或取消完成</span>
+          <WeekCompletionButton key={week.number} week={week} progress={progress} />
         </div>
         {progress.saveError && <p className="progress-error" role="alert">暂时无法保存到本地，当前进度仅在本次页面中保留。</p>}
         {week.intro && <div className="markdown-content week-note"><ReactMarkdown components={markdownComponents}>{week.intro}</ReactMarkdown></div>}
@@ -188,7 +207,7 @@ function App() {
   }, [dark])
 
   const themeProps = { dark, onToggle: () => setDark((value) => !value) }
-  return <BrowserRouter><Routes><Route path="/" element={<HomePage {...themeProps} />} /><Route path="/week/:weekId" element={<WeekPage {...themeProps} progress={progress} />} /></Routes></BrowserRouter>
+  return <BrowserRouter><Routes><Route path="/" element={<HomePage {...themeProps} progress={progress} />} /><Route path="/week/:weekId" element={<WeekPage {...themeProps} progress={progress} />} /></Routes></BrowserRouter>
 }
 
 export default App
