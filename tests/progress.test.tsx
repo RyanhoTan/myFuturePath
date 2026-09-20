@@ -11,12 +11,12 @@ const dayBody = (number: number) => document.getElementById(`day-${number}-body`
 const savedIds = (): string[] => JSON.parse(localStorage.getItem(PROGRESS_KEY)!).completed
 
 async function confirmCompletion(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '确认完成', exact: true }))
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '确认完成' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 }
 
 async function completeDay(user: ReturnType<typeof userEvent.setup>, day: number) {
-  await user.click(screen.getByRole('button', { name: `标记完成 Day ${day}`, exact: true }))
+  await user.click(screen.getByRole('button', { name: `标记完成 Day ${day}` }))
   await confirmCompletion(user)
 }
 
@@ -29,8 +29,8 @@ beforeEach(() => {
   })))
   vi.stubGlobal('scrollTo', vi.fn())
   // JSDOM has no native dialog implementation. Browser focus containment is not simulated here.
-  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value: function () { this.setAttribute('open', '') } })
-  Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value: function () { this.removeAttribute('open') } })
+  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value: function (this: HTMLDialogElement) { this.setAttribute('open', '') } })
+  Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value: function (this: HTMLDialogElement) { this.removeAttribute('open') } })
 })
 
 afterEach(() => {
@@ -89,16 +89,16 @@ describe('exercise completion', () => {
     expect(screen.getByRole('status').textContent).toContain('1 / 5')
     view.unmount()
     render(<App />)
-    expect(screen.getByRole('button', { name: '取消完成 Day 1', exact: true }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: '取消完成 Day 1' }).getAttribute('aria-pressed')).toBe('true')
     expect(dayBody(1).getAttribute('aria-hidden')).toBe('true')
-    await user.click(screen.getByRole('button', { name: '展开 Day 1 题目', exact: true }))
+    await user.click(screen.getByRole('button', { name: '展开 Day 1 题目' }))
     expect(dayBody(1).getAttribute('aria-hidden')).toBe('false')
     expect(savedIds()).toContain(firstDay.id)
     await user.click(screen.getByRole('checkbox', { name: 'Day 1 第 2 题已完成' }))
     expect(dayBody(1).getAttribute('aria-hidden')).toBe('false')
     expect(savedIds()).not.toContain(firstDay.id)
     expect(savedIds()).toContain(firstDay.tasks[0].id)
-    expect(screen.getByRole('button', { name: '标记完成 Day 1', exact: true }).getAttribute('aria-pressed')).toBe('false')
+    expect(screen.getByRole('button', { name: '标记完成 Day 1' }).getAttribute('aria-pressed')).toBe('false')
   })
 
   it('auto-collapses after the last individual task and moves keyboard focus out of the hidden content', async () => {
@@ -110,7 +110,7 @@ describe('exercise completion', () => {
       await user.keyboard(' ')
     }
     expect(dayBody(1).getAttribute('aria-hidden')).toBe('true')
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: '取消完成 Day 1', exact: true }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: '取消完成 Day 1' }))
     expect(savedIds()).toContain(firstDay.id)
   })
 
@@ -119,7 +119,7 @@ describe('exercise completion', () => {
     render(<App />)
     await completeDay(user, 4)
     await completeDay(user, 1)
-    await user.click(screen.getByRole('button', { name: '取消完成 Day 1', exact: true }))
+    await user.click(screen.getByRole('button', { name: '取消完成 Day 1' }))
     expect(savedIds()).toEqual(['day-4'])
     expect(dayBody(4).getAttribute('aria-hidden')).toBe('true')
     await user.click(screen.getByRole('link', { name: '返回训练计划' }))
@@ -142,7 +142,7 @@ describe('exercise completion', () => {
   it('shows a save error without losing the current interactive state', async () => {
     const user = userEvent.setup()
     const setItem = Storage.prototype.setItem
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
       if (key === PROGRESS_KEY) throw new DOMException('Storage full', 'QuotaExceededError')
       return setItem.call(this, key, value)
     })
@@ -150,7 +150,7 @@ describe('exercise completion', () => {
     await completeDay(user, 4)
     expect(screen.getByRole('alert').textContent).toContain('暂时无法保存到本地')
     expect(dayBody(4).getAttribute('aria-hidden')).toBe('true')
-    await user.click(screen.getByRole('button', { name: '取消完成 Day 4', exact: true }))
+    await user.click(screen.getByRole('button', { name: '取消完成 Day 4' }))
     expect(dayBody(4).getAttribute('aria-hidden')).toBe('false')
   })
 })
@@ -161,15 +161,15 @@ describe('confirmation dialogs', () => {
     render(<App />)
     await user.click(screen.getByRole('checkbox', { name: 'Day 1 第 1 题已完成' }))
     const snapshot = localStorage.getItem(PROGRESS_KEY)
-    const trigger = screen.getByRole('button', { name: '标记完成 Day 1', exact: true })
+    const trigger = screen.getByRole('button', { name: '标记完成 Day 1' })
     await user.click(trigger)
     const dialog = screen.getByRole('dialog', { name: '确认完成 Day 1？' })
     expect(dialog.getAttribute('aria-describedby')).toBeTruthy()
-    expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: '取消', exact: true }))
+    expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: '取消' }))
     expect(document.body.style.overflow).toBe('hidden')
     expect(dayBody(1).getAttribute('aria-hidden')).toBe('false')
     expect(localStorage.getItem(PROGRESS_KEY)).toBe(snapshot)
-    await user.click(within(dialog).getByRole('button', { name: '取消', exact: true }))
+    await user.click(within(dialog).getByRole('button', { name: '取消' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(document.activeElement).toBe(trigger)
     expect(document.body.style.overflow).not.toBe('hidden')
@@ -179,7 +179,7 @@ describe('confirmation dialogs', () => {
   it('handles native Escape cancellation and backdrop clicks without writing progress', async () => {
     const user = userEvent.setup()
     render(<App />)
-    const trigger = screen.getByRole('button', { name: '标记完成 Day 1', exact: true })
+    const trigger = screen.getByRole('button', { name: '标记完成 Day 1' })
     await user.click(trigger)
     // A real browser emits cancel when Escape is pressed on a modal dialog.
     fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }))
@@ -194,7 +194,7 @@ describe('confirmation dialogs', () => {
   it('supports explicit keyboard confirmation and returns focus after collapsing the day', async () => {
     const user = userEvent.setup()
     render(<App />)
-    const trigger = screen.getByRole('button', { name: '标记完成 Day 4', exact: true })
+    const trigger = screen.getByRole('button', { name: '标记完成 Day 4' })
     trigger.focus()
     await user.keyboard('{Enter}')
     expect(document.activeElement?.textContent).toBe('取消')
@@ -209,7 +209,7 @@ describe('confirmation dialogs', () => {
   it('does not invert completion if another tab updates progress while confirmation is open', async () => {
     const user = userEvent.setup()
     render(<App />)
-    await user.click(screen.getByRole('button', { name: '标记完成 Day 4', exact: true }))
+    await user.click(screen.getByRole('button', { name: '标记完成 Day 4' }))
     act(() => window.dispatchEvent(new StorageEvent('storage', { key: PROGRESS_KEY, newValue: JSON.stringify({ version: 1, completed: ['day-4'] }) })))
     await confirmCompletion(user)
     expect(savedIds()).toContain('day-4')
@@ -219,10 +219,10 @@ describe('confirmation dialogs', () => {
   it('cannot commit through a stale confirm button after cancellation has begun', async () => {
     const user = userEvent.setup()
     render(<App />)
-    await user.click(screen.getByRole('button', { name: '标记完成 Day 4', exact: true }))
+    await user.click(screen.getByRole('button', { name: '标记完成 Day 4' }))
     const dialog = within(screen.getByRole('dialog'))
-    const cancel = dialog.getByRole('button', { name: '取消', exact: true })
-    const confirm = dialog.getByRole('button', { name: '确认完成', exact: true })
+    const cancel = dialog.getByRole('button', { name: '取消' })
+    const confirm = dialog.getByRole('button', { name: '确认完成' })
     act(() => { fireEvent.click(cancel); fireEvent.click(confirm) })
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(localStorage.getItem(PROGRESS_KEY)).toBeNull()
@@ -235,7 +235,7 @@ describe('week completion', () => {
     const user = userEvent.setup()
     window.history.replaceState({}, '', '/')
     const view = render(<App />)
-    const trigger = screen.getByRole('button', { name: '标记完成 第 1 周', exact: true })
+    const trigger = screen.getByRole('button', { name: '标记完成 第 1 周' })
     expect(trigger.closest('a')).toBeNull()
     await user.click(trigger)
     expect(window.location.pathname).toBe('/')
@@ -248,17 +248,17 @@ describe('week completion', () => {
     expect(trigger.closest('.plan-card')!.classList.contains('is-complete')).toBe(true)
     view.unmount()
     render(<App />)
-    expect(screen.getByRole('button', { name: '取消完成 第 1 周', exact: true }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: '取消完成 第 1 周' }).getAttribute('aria-pressed')).toBe('true')
     await user.click(screen.getByRole('link', { name: 'JS 数组、对象、函数' }))
     expect(window.location.pathname).toBe('/week/week-1')
     expect(screen.getByRole('status').textContent).toContain('5 / 5')
     for (const day of trainingWeeks[0].days) expect(dayBody(day.number).getAttribute('aria-hidden')).toBe('true')
-    await user.click(screen.getByRole('button', { name: '展开 Day 1 题目', exact: true }))
+    await user.click(screen.getByRole('button', { name: '展开 Day 1 题目' }))
     await user.click(screen.getByRole('checkbox', { name: 'Day 1 第 1 题已完成' }))
-    expect(screen.getByRole('button', { name: '标记完成 第 1 周', exact: true }).getAttribute('aria-pressed')).toBe('false')
+    expect(screen.getByRole('button', { name: '标记完成 第 1 周' }).getAttribute('aria-pressed')).toBe('false')
     expect(screen.getByRole('status').textContent).toContain('4 / 5')
     // A manually expanded day must still collapse on a subsequent bulk completion.
-    await user.click(screen.getByRole('button', { name: '标记完成 第 1 周', exact: true }))
+    await user.click(screen.getByRole('button', { name: '标记完成 第 1 周' }))
     await confirmCompletion(user)
     expect(dayBody(1).getAttribute('aria-hidden')).toBe('true')
   })
@@ -267,14 +267,14 @@ describe('week completion', () => {
     const user = userEvent.setup()
     localStorage.setItem(PROGRESS_KEY, JSON.stringify({ version: 1, completed: ['day-6'] }))
     render(<App />)
-    await user.click(screen.getByRole('button', { name: '标记完成 第 1 周', exact: true }))
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '取消', exact: true }))
+    await user.click(screen.getByRole('button', { name: '标记完成 第 1 周' }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '取消' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(savedIds()).toEqual(['day-6'])
-    await user.click(screen.getByRole('button', { name: '标记完成 第 1 周', exact: true }))
+    await user.click(screen.getByRole('button', { name: '标记完成 第 1 周' }))
     await confirmCompletion(user)
     expect(savedIds()).toContain('day-6')
-    await user.click(screen.getByRole('button', { name: '取消完成 第 1 周', exact: true }))
+    await user.click(screen.getByRole('button', { name: '取消完成 第 1 周' }))
     expect(screen.getByRole('dialog').textContent).toContain('包括之前单独完成的小题')
     expect(screen.getByRole('status').textContent).toContain('5 / 5')
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '确认取消完成' }))
@@ -291,9 +291,9 @@ describe('week completion', () => {
       localStorage.setItem(PROGRESS_KEY, JSON.stringify({ version: 1, completed: [...saved, day.id, ...day.tasks.map((task) => task.id)] }))
     }
     render(<App />)
-    expect(screen.getByRole('button', { name: '标记完成 第 1 周', exact: true }).getAttribute('aria-pressed')).toBe('false')
+    expect(screen.getByRole('button', { name: '标记完成 第 1 周' }).getAttribute('aria-pressed')).toBe('false')
     await completeDay(user, 5)
-    expect(screen.getByRole('button', { name: '取消完成 第 1 周', exact: true }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: '取消完成 第 1 周' }).getAttribute('aria-pressed')).toBe('true')
     expect(savedIds().filter((id) => id.startsWith('week-'))).toEqual([])
   })
 })
