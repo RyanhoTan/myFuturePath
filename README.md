@@ -1,32 +1,60 @@
-# React + TypeScript + Vite
+# myFuturePath
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+这是给自己准备的一份前端训练题单。
 
-Currently, two official plugins are available:
+目标很简单：先把 JavaScript 和 React 的基础补扎实，慢慢练到不靠 AI 也能独立写出一个正常的小功能。平时工作当然还是可以用 AI，训练的时候则尽量先自己想、自己写，卡住了再问。
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 大概怎么规划
 
-## React Compiler
+总共 6 周、30 个训练日，每周 5 天。
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| 周次 | 主要内容 |
+| --- | --- |
+| 第 1 周 | JavaScript 数组、对象、函数、不可变更新 |
+| 第 2 周 | Promise、async/await、事件循环和异步请求 |
+| 第 3 周 | React 组件、Props、State、事件和列表渲染 |
+| 第 4 周 | React 状态设计、表单、搜索、筛选和 Effect |
+| 第 5 周 | 接口请求、加载状态、错误处理和 React Query |
+| 第 6 周 | TypeScript、Git、pnpm、Vite 和工程化 |
 
-## Expanding the Oxlint configuration
+最后会做一个小型用户管理系统，把搜索、分页、增删改、表单、请求和状态管理串起来。
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## 训练方式
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+每道题先自己写，建议给自己留 30 分钟。可以查文档和看报错，但不要一上来就让 AI 直接把答案写完。
+
+每周还会有一次裸写练习，关掉 AI，从空文件开始写一个 Todo、购物车、搜索列表之类的小功能。重点不是一次写得多漂亮，而是知道自己到底卡在哪里。
+
+## 项目里有什么
+
+- 首页按周展示训练计划，点击卡片进入对应周的题单
+- 每天的题目、说明和代码示例都写在项目里
+- JavaScript、React、TypeScript 等代码块使用类似 VS Code 的深色高亮样式
+- 支持浅色和深色主题切换
+- 每道小题和每天的练习都可以标记完成
+- 完成状态保存在浏览器 `localStorage` 里，刷新后不会丢
+- 完成的题目会自动收起，也可以随时展开复习或取消完成
+- 支持整周标记完成，并且会保留跨周的进度
+
+## 本地运行
+
+```bash
+pnpm install
+pnpm dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+然后打开终端里显示的本地地址即可。
+
+常用命令：
+
+```bash
+pnpm build       # 构建项目
+pnpm lint        # 检查代码
+pnpm test        # 类型检查并运行测试
+```
+
+## 技术栈
+
+React + TypeScript + Vite，题目内容使用 Markdown 管理，代码示例使用 Prism 做语法高亮，页面交互和折叠动画使用 Motion。
+
+这个项目暂时不追求做成多复杂的产品，先把每天的题真正写完。等 30 天练完，再回头看哪些地方还需要继续补。
