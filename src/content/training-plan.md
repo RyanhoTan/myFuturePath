@@ -82,10 +82,27 @@ console.log(a.name);
 
 再练：
 
+下面第 1～4 题使用这些初始对象。每道题都从这段初始数据重新开始：
+
+```js
+const user = { name: "Ryan", age: 20 };
+const todo = { id: 1, title: "学习 JavaScript", completed: false };
+```
+
+第 5～6 题使用下面的原数组。每道题都从这段初始数据重新开始：
+
+```js
+const todos = [
+  { id: 1, title: "React", completed: false },
+  { id: 2, title: "TypeScript", completed: false },
+  { id: 3, title: "Git", completed: true },
+];
+```
+
 1. 不修改原 user，把 `age` 改成 21
 2. 不修改原 todo，把 `completed` 改成 true
 3. 给 user 增加 `city: "Shenzhen"`
-4. 删除对象某个属性（可以查语法）
+4. 从 user 中删除 `age` 属性（可以查语法）
 5. ⭐ 不修改原数组，把 `id=2` Todo 改成完成
 6. ⭐ 检查第 5 题执行后原数组有没有变化
 
@@ -935,4 +952,3 @@ Tom    18   [编辑] [删除]
 完成以后你直接把 6 道题的代码发给我，**不要让 AI 帮你改，也不用担心代码很烂**。我按照今天的方式批：先指出问题，不会直接把答案全部塞给你。
 
 如果 Day 1 太简单，我就直接给你加难度；如果明显吃力，我们就在这里多练一天。这样比死守“30 天必须学完”更适合你。
-
