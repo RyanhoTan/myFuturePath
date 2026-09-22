@@ -110,34 +110,110 @@ const todos = [
 
 ## Day 4 — 函数
 
-自己实现：
+### 核心
 
-```js
-add(1, 2) // 3
+函数的基本过程是：**参数传进来 → 函数处理 → `return` 结果**。
 
-isAdult(20) // true
+每题都先写函数，再用调用示例检查结果。题目只给要求和骨架，不要直接看完整答案。
 
-getFullName("Ryan", "Ho")
+### 练习
 
-findUser(users, 2)
+1. 写 `add(a, b)`：接收两个数字，返回它们的和。
 
-completeTodo(todos, 3)
-```
+   ```js
+   function add(a, b) {
+     // 在这里处理 a 和 b
+   }
 
-再写：
+   add(1, 2); // 3
+   ```
 
-```js
-deleteTodo(todos, id)
-getUncompletedCount(todos)
-```
+2. 写 `isAdult(age)`：判断年龄是否大于等于 18，返回一个 `boolean`。
 
-⭐ 最后一题：
+   ```js
+   function isAdult(age) {
+     // 返回 true 或 false
+   }
 
-```js
-updateUserName(users, id, newName)
-```
+   isAdult(20); // true
+   isAdult(17); // false
+   ```
 
-要求不能修改原数组。
+3. 写 `getFullName(firstName, lastName)`：把 `firstName` 和 `lastName` 拼成一个完整名字并返回。
+
+   ```js
+   function getFullName(firstName, lastName) {
+     // 拼接 firstName 和 lastName
+   }
+
+   getFullName("Ryan", "Ho"); // "Ryan Ho"
+   ```
+
+4. 写 `findUser(users, id)`：在用户数组中找到指定 `id` 的用户并返回。
+
+   ```js
+   function findUser(users, id) {
+     // 在 users 中查找 id 对应的用户
+   }
+
+   findUser(users, 2); // 返回 id 为 2 的用户
+   ```
+
+   **提示：**复习 `find`。
+
+5. 写 `completeTodo(todos, id)`：把指定 `id` 的 Todo 改成已完成，并返回处理后的新数组。
+
+   要求：不能修改原数组，也不能修改原数组中的 Todo 对象。
+
+   ```js
+   function completeTodo(todos, id) {
+     // 创建新的数组，并只更新指定 Todo
+   }
+
+   completeTodo(todos, 3); // 返回新的 todos，id 为 3 的 Todo 已完成
+   ```
+
+   **提示：**复习 `map` 和展开运算符。
+
+6. 写 `deleteTodo(todos, id)`：删除指定 `id` 的 Todo，并返回处理后的新数组。
+
+   要求：不能修改原数组。
+
+   ```js
+   function deleteTodo(todos, id) {
+     // 创建一个不包含指定 Todo 的新数组
+   }
+
+   deleteTodo(todos, 2); // 返回不包含 id 为 2 的 Todo 的新数组
+   ```
+
+   **提示：**复习 `filter`。
+
+7. 写 `getUncompletedCount(todos)`：返回 Todo 数组中未完成 Todo 的数量。
+
+   ```js
+   function getUncompletedCount(todos) {
+     // 统计 completed 为 false 的 Todo
+   }
+
+   getUncompletedCount(todos); // 返回未完成 Todo 的数量
+   ```
+
+   **提示：**复习 `filter` 和数组的 `length`。
+
+8. 写 `updateUserName(users, id, newName)`：修改指定用户的名字，并返回处理后的新数组。
+
+   要求：不能修改原数组，也不能修改原数组中的用户对象。
+
+   ```js
+   function updateUserName(users, id, newName) {
+     // 创建新的数组，并只更新指定用户的 name
+   }
+
+   updateUserName(users, 2, "Jerry"); // 返回新的 users，id 为 2 的用户名字已更新
+   ```
+
+   **提示：**复习 `map` 和展开运算符。
 
 ---
 
@@ -909,27 +985,34 @@ Tom    18   [编辑] [删除]
 
 ---
 
-# 你每天只需要记录 4 个东西
+# 每日薄弱点记录模板
 
-不用写学习日记，每天结束记：
+不用写长学习日记，每天只记录真正卡住的点：
 
-```text
-2026-09-21
+````md
+2026-09-21｜Day 1 map
 
-今天：Day 1 map
+## 薄弱点：map 修改对象
 
-独立完成：4/6
+一句话结论：更新数组里的对象时要返回新对象，不能直接赋值。
 
-卡住：
-- map 修改对象不会
-- 展开运算符记不住
+❌ 反例
 
-看答案后：
-- 理解
-
-第二天是否需要重写：
-- 第 5 题
+```tsx
+users.map(user => user.name = "Jerry");
 ```
+
+✅ 正例
+
+```tsx
+users.map(user => ({ ...user, name: "Jerry" }));
+```
+
+## 速记
+
+- 原数组不变。
+- 只复制需要更新的对象。
+````
 
 这份记录很重要。
 
