@@ -154,10 +154,17 @@ class DebugErrorBoundary extends Component<DebugErrorBoundaryProps, DebugErrorBo
   }
 }
 
-function TrainingDebugPage({ dark, onToggle }: ThemeProps) {
+type TrainingDebugWorkbenchProps = {
+  exercises?: DebugExercise[]
+  initialExercisePath?: string
+}
+
+function TrainingDebugWorkbench({ exercises = debugExercises, initialExercisePath }: TrainingDebugWorkbenchProps) {
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedPath = searchParams.get('file')
-  const selected = debugExercises.find((exercise) => exercise.path === requestedPath) ?? debugExercises[0]
+  const selected = exercises.find((exercise) => exercise.path === requestedPath)
+    ?? exercises.find((exercise) => exercise.path === initialExercisePath)
+    ?? exercises[0]
   const [previewKey, setPreviewKey] = useState(0)
   const ExerciseComponent = useMemo(() => selected ? lazy(selected.load) : null, [selected])
 
@@ -166,6 +173,52 @@ function TrainingDebugPage({ dark, onToggle }: ThemeProps) {
     setPreviewKey((key) => key + 1)
   }
 
+  if (exercises.length === 0) return (
+    <div className="debug-empty">
+      <h2>还没有可调试的练习</h2>
+      <p>请在 <code>src/training</code> 下创建一个默认导出 React 组件的 <code>.tsx</code> 或 <code>.jsx</code> 文件。</p>
+    </div>
+  )
+
+  return (
+    <div className="debug-layout">
+      <aside className="debug-sidebar" aria-label="练习文件列表">
+        <div className="debug-sidebar-heading">练习文件</div>
+        <nav className="debug-file-list">
+          {exercises.map((exercise) => (
+            <button
+              className={`debug-file-button ${exercise === selected ? 'is-selected' : ''}`}
+              key={exercise.path}
+              type="button"
+              onClick={() => selectExercise(exercise.path)}
+            >
+              <span className="debug-file-dot" aria-hidden="true" />
+              <span>{exercise.path}</span>
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      <section className="debug-preview" aria-live="polite">
+        <div className="debug-preview-bar">
+          <span><b>正在调试</b>{selected?.path}</span>
+          <button type="button" onClick={() => setPreviewKey((key) => key + 1)}>重置组件</button>
+        </div>
+        <div className="debug-canvas" key={`${selected?.path}-${previewKey}`}>
+          {ExerciseComponent && selected && (
+            <DebugErrorBoundary file={selected.path}>
+              <Suspense fallback={<p className="debug-loading">正在加载练习…</p>}>
+                <ExerciseComponent />
+              </Suspense>
+            </DebugErrorBoundary>
+          )}
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function TrainingDebugPage({ dark, onToggle }: ThemeProps) {
   return (
     <div className={`app-shell ${dark ? 'theme-dark' : ''}`}>
       <ThemeControl dark={dark} onToggle={onToggle} />
@@ -180,47 +233,7 @@ function TrainingDebugPage({ dark, onToggle }: ThemeProps) {
           <span className="debug-count"><strong>{debugExercises.length}</strong><small>个练习</small></span>
         </div>
 
-        {debugExercises.length === 0 ? (
-          <div className="debug-empty">
-            <h2>还没有可调试的练习</h2>
-            <p>请在 <code>src/training</code> 下创建一个默认导出 React 组件的 <code>.tsx</code> 或 <code>.jsx</code> 文件。</p>
-          </div>
-        ) : (
-          <div className="debug-layout">
-            <aside className="debug-sidebar" aria-label="练习文件列表">
-              <div className="debug-sidebar-heading">练习文件</div>
-              <nav className="debug-file-list">
-                {debugExercises.map((exercise) => (
-                  <button
-                    className={`debug-file-button ${exercise === selected ? 'is-selected' : ''}`}
-                    key={exercise.path}
-                    type="button"
-                    onClick={() => selectExercise(exercise.path)}
-                  >
-                    <span className="debug-file-dot" aria-hidden="true" />
-                    <span>{exercise.path}</span>
-                  </button>
-                ))}
-              </nav>
-            </aside>
-
-            <section className="debug-preview" aria-live="polite">
-              <div className="debug-preview-bar">
-                <span><b>正在调试</b>{selected?.path}</span>
-                <button type="button" onClick={() => setPreviewKey((key) => key + 1)}>重置组件</button>
-              </div>
-              <div className="debug-canvas" key={`${selected?.path}-${previewKey}`}>
-                {ExerciseComponent && selected && (
-                  <DebugErrorBoundary file={selected.path}>
-                    <Suspense fallback={<p className="debug-loading">正在加载练习…</p>}>
-                      <ExerciseComponent />
-                    </Suspense>
-                  </DebugErrorBoundary>
-                )}
-              </div>
-            </section>
-          </div>
-        )}
+        <TrainingDebugWorkbench />
       </main>
     </div>
   )
@@ -273,8 +286,10 @@ function HomePage({ dark, onToggle, progress }: ThemeProps & { progress: Exercis
 
 function WeekPage({ dark, onToggle, progress }: ThemeProps & { progress: ExerciseProgress }) {
   const { weekId } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const plan = plans.find((item) => item.id === weekId)
   const week = trainingWeeks.find((item) => item.number === Number(plan?.week))
+  const [debugOpen, setDebugOpen] = useState(false)
 
   useEffect(() => {
     window.scrollTo({ top: 0 })
@@ -283,6 +298,23 @@ function WeekPage({ dark, onToggle, progress }: ThemeProps & { progress: Exercis
   if (!plan || !week) return <Navigate to="/" replace />
 
   const finishedDays = week.days.filter((day) => progress.completed[day.id]).length
+  const weekDebugExercises = debugExercises.filter((exercise) => exercise.path.startsWith(`week${week.number}/`))
+  const initialDebugExercise = weekDebugExercises.find((exercise) => exercise.path.includes(`day${week.days[0]?.number}.`))?.path
+  const selectedDebugExercise = searchParams.get('file') ?? initialDebugExercise
+
+  const findDayDebugExercise = (dayNumber: number) => weekDebugExercises.find(
+    (exercise) => exercise.path.endsWith(`/day${dayNumber}.tsx`) || exercise.path.endsWith(`/day${dayNumber}.jsx`),
+  )
+
+  const toggleDebugForDay = (dayNumber: number) => {
+    const dayExercise = findDayDebugExercise(dayNumber)
+    if (dayExercise && dayExercise.path !== selectedDebugExercise) {
+      setSearchParams({ file: dayExercise.path })
+      setDebugOpen(true)
+      return
+    }
+    setDebugOpen((open) => !open)
+  }
 
   return (
     <div className={`app-shell ${dark ? 'theme-dark' : ''}`}>
@@ -299,11 +331,47 @@ function WeekPage({ dark, onToggle, progress }: ThemeProps & { progress: Exercis
           <WeekCompletionButton key={week.number} week={week} progress={progress} />
         </div>
         {progress.saveError && <p className="progress-error" role="alert">暂时无法保存到本地，当前进度仅在本次页面中保留。</p>}
-        {week.intro && <div className="markdown-content week-note"><ReactMarkdown components={markdownComponents}>{week.intro}</ReactMarkdown></div>}
-        <div className="day-list">
-          {week.days.map((day) => <ExerciseDay key={day.id} day={day} progress={progress} components={markdownComponents} />)}
+        <div className={`detail-workspace ${debugOpen ? 'is-debug-open' : ''}`}>
+          <div className="detail-main-content">
+            {week.intro && <div className="markdown-content week-note"><ReactMarkdown components={markdownComponents}>{week.intro}</ReactMarkdown></div>}
+            <div className="day-list">
+              {week.days.map((day) => {
+                const dayDebugExercise = findDayDebugExercise(day.number)
+                const isSelectedDebugExercise = dayDebugExercise?.path === selectedDebugExercise
+                const debugActionLabel = debugOpen && dayDebugExercise && !isSelectedDebugExercise
+                  ? `切换到 Day ${day.number} 的调试台`
+                  : `${debugOpen ? '收起' : '展开'}练习调试台，Day ${day.number}`
+                return <ExerciseDay
+                  key={day.id}
+                  day={day}
+                  progress={progress}
+                  components={markdownComponents}
+                  headerAction={<button
+                    className={`day-debug-toggle ${debugOpen ? 'is-open' : ''}`}
+                    type="button"
+                    aria-label={debugActionLabel}
+                    aria-expanded={debugOpen}
+                    onClick={() => toggleDebugForDay(day.number)}
+                  ><span aria-hidden="true">&lt;/&gt;</span>调试台</button>}
+                />
+              })}
+            </div>
+            {week.outro && <div className="markdown-content week-note"><ReactMarkdown components={markdownComponents}>{week.outro}</ReactMarkdown></div>}
+          </div>
+          {debugOpen && (
+            <aside className="week-debug-panel" id="week-debug-panel" aria-label="练习调试台">
+              <div className="week-debug-panel-heading">
+                <div>
+                  <p className="eyebrow"><span />LIVE WORKBENCH</p>
+                  <h2>练习调试台</h2>
+                  <p>编辑 <code>src/training</code> 下的练习后，保存即可在这里查看运行结果。</p>
+                </div>
+                <button type="button" className="week-debug-close" aria-label="收起练习调试台" onClick={() => setDebugOpen(false)}>×</button>
+              </div>
+              <TrainingDebugWorkbench exercises={weekDebugExercises} initialExercisePath={selectedDebugExercise} />
+            </aside>
+          )}
         </div>
-        {week.outro && <div className="markdown-content week-note"><ReactMarkdown components={markdownComponents}>{week.outro}</ReactMarkdown></div>}
       </main>
     </div>
   )

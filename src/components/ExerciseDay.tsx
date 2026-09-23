@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useRef, useState, type ComponentPropsWithoutRef } from 'react'
+import { createContext, useContext, useMemo, useRef, useState, type ComponentPropsWithoutRef, type ReactNode } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import ReactMarkdown, { type Components, type ExtraProps } from 'react-markdown'
 import { remarkExerciseTasks, type TrainingDay } from '../content/exercises'
@@ -52,7 +52,7 @@ const titleComponents: Components = {
   code: ({ children }) => <code className="inline-code">{children}</code>,
 }
 
-export function ExerciseDay({ day, progress, components }: { day: TrainingDay; progress: ExerciseProgress; components: Components }) {
+export function ExerciseDay({ day, progress, components, headerAction }: { day: TrainingDay; progress: ExerciseProgress; components: Components; headerAction?: ReactNode }) {
   const done = Boolean(progress.completed[day.id])
   const [disclosure, setDisclosure] = useState({ done, expanded: !done })
   // Reset manual review expansion on bulk completion or undo, too.
@@ -78,6 +78,7 @@ export function ExerciseDay({ day, progress, components }: { day: TrainingDay; p
           {day.tasks.length > 0 && <span className="day-task-count">{finishedTasks} / {day.tasks.length} 题已完成</span>}
         </div>
         <div className="day-actions">
+          {headerAction}
           <CompletionButton
             buttonRef={completeButton}
             label={`Day ${day.number}`}
