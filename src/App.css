@@ -81,6 +81,9 @@
 .home-brand { display: block; margin-bottom: 12px; color: var(--blue); font-size: 12px; font-weight: 700; letter-spacing: -.01em; }
 .section-title h1 { margin: 0; color: var(--text); font-size: clamp(2.5rem, 5vw, 4.2rem); font-weight: 720; line-height: 1.05; letter-spacing: -.05em; }
 .section-title > p { max-width: 310px; margin: 0 0 5px; color: var(--secondary); font-size: 14px; line-height: 1.65; }
+.debug-inline-link { display: block; margin-top: 12px; color: var(--blue); font-size: 12px; font-weight: 650; }
+.debug-inline-link span { display: inline-block; margin-left: 4px; transition: transform .18s ease; }
+.debug-inline-link:hover span { transform: translate(2px, -2px); }
 
 .timeline { display: grid; gap: 14px; }
 .plan-card {
@@ -132,6 +135,45 @@
 .back-link { display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; margin-bottom: 26px; border-radius: 999px; color: var(--secondary); background: rgba(127, 127, 127, .08); font-size: 12px; font-weight: 600; transition: color .18s ease, background .18s ease, transform .1s ease-out; }
 .back-link:hover { color: var(--text); background: rgba(127, 127, 127, .14); }
 .back-link:active { transform: scale(.96); }
+
+/* Exercise debug workbench */
+.debug-page { padding-block: 58px 110px; }
+.debug-hero { min-height: 245px; padding: clamp(30px, 5vw, 54px); display: flex; align-items: center; justify-content: space-between; gap: 40px; border: 1px solid var(--separator); border-radius: 34px; background: var(--surface); box-shadow: var(--shadow-small); backdrop-filter: blur(28px) saturate(160%); -webkit-backdrop-filter: blur(28px) saturate(160%); }
+.debug-hero h1 { margin: 18px 0 13px; color: var(--text); font-size: clamp(2.7rem, 6vw, 5rem); font-weight: 720; line-height: 1.04; letter-spacing: -.055em; }
+.debug-hero p:last-child { max-width: 620px; margin: 0; color: var(--secondary); font-size: 15px; line-height: 1.65; }
+.debug-hero code, .debug-empty code { padding: .16em .38em; border: 1px solid var(--separator); border-radius: 6px; background: var(--surface-subtle); font: .9em var(--mono); }
+.debug-count { width: 124px; height: 124px; display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 0 0 auto; border: 1px solid rgba(155, 108, 255, .25); border-radius: 32px; color: #9b6cff; background: rgba(155, 108, 255, .12); }
+.debug-count strong { font-size: 42px; font-weight: 680; letter-spacing: -.05em; line-height: 1; }
+.debug-count small { margin-top: 8px; color: var(--secondary); font-size: 10px; font-weight: 700; letter-spacing: .12em; }
+.debug-layout { display: grid; grid-template-columns: minmax(190px, 260px) minmax(0, 1fr); align-items: start; gap: 18px; margin-top: 24px; }
+.debug-sidebar, .debug-preview, .debug-empty { border: 1px solid var(--separator); border-radius: 24px; background: var(--surface-solid); box-shadow: var(--shadow-small); }
+.debug-sidebar { position: sticky; top: 24px; padding: 14px; }
+.debug-sidebar-heading { padding: 8px 10px 12px; color: var(--secondary); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.debug-file-list { display: grid; gap: 4px; }
+.debug-file-button { min-width: 0; padding: 11px 10px; display: flex; align-items: center; gap: 9px; border: 0; border-radius: 12px; color: var(--secondary); background: transparent; text-align: left; font-size: 12px; line-height: 1.35; transition: color .16s ease, background-color .16s ease, transform .1s ease-out; }
+.debug-file-button span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.debug-file-button:hover { color: var(--text); background: var(--surface-subtle); }
+.debug-file-button:active { transform: scale(.98); }
+.debug-file-button.is-selected { color: var(--text); background: color-mix(in srgb, var(--blue) 11%, var(--surface-subtle)); font-weight: 650; }
+.debug-file-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #9b6cff; box-shadow: 0 0 0 4px rgba(155, 108, 255, .12); }
+.debug-file-button.is-selected .debug-file-dot { background: var(--blue); box-shadow: 0 0 0 4px rgba(0, 113, 227, .12); }
+.debug-preview { min-width: 0; overflow: hidden; }
+.debug-preview-bar { min-height: 54px; padding: 10px 16px 10px 20px; display: flex; align-items: center; justify-content: space-between; gap: 14px; border-bottom: 1px solid var(--separator); color: var(--secondary); font: 11px var(--mono); }
+.debug-preview-bar span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.debug-preview-bar b { margin-right: 9px; color: var(--text); font-family: inherit; font-weight: 700; }
+.debug-preview-bar button { min-height: 30px; padding: 0 10px; flex: 0 0 auto; border: 1px solid var(--separator); border-radius: 8px; color: var(--secondary); background: var(--surface-subtle); font-size: 11px; transition: color .16s ease, background-color .16s ease; }
+.debug-preview-bar button:hover { color: var(--text); background: color-mix(in srgb, var(--blue) 10%, var(--surface-subtle)); }
+.debug-canvas { min-height: 360px; padding: clamp(30px, 5vw, 72px); display: grid; place-items: center; color: var(--text); background: radial-gradient(circle at 50% 0, rgba(0, 113, 227, .06), transparent 52%), var(--surface-solid); }
+.debug-canvas > * { width: 100%; }
+.debug-loading, .debug-empty p { color: var(--secondary); font-size: 14px; line-height: 1.7; }
+.debug-empty { margin-top: 24px; padding: 42px; }
+.debug-empty h2 { margin: 0 0 12px; font-size: 24px; letter-spacing: -.03em; }
+.debug-empty p { margin: 0; }
+.debug-error { padding: 22px; display: flex; align-items: flex-start; gap: 14px; border: 1px solid rgba(220, 72, 72, .25); border-radius: 16px; color: var(--text); background: rgba(220, 72, 72, .07); }
+.debug-error-icon { width: 26px; height: 26px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 50%; color: #fff; background: #d94d4d; font-size: 13px; font-weight: 750; }
+.debug-error h3 { margin: 2px 0 8px; font-size: 16px; }
+.debug-error p { margin: 0 0 12px; color: var(--secondary); font: 11px var(--mono); overflow-wrap: anywhere; }
+.debug-error pre { margin: 0; color: #c94c4c; font: 12px/1.6 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 
 .eyebrow { margin: 0; display: flex; align-items: center; gap: 8px; color: var(--tertiary); font-size: 10px; font-weight: 700; letter-spacing: .12em; }
 .eyebrow > span { width: 7px; height: 7px; border-radius: 50%; background: var(--blue); box-shadow: 0 0 0 5px rgba(0, 113, 227, .1); }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Component, lazy, Suspense, useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter'
 import bash from 'react-syntax-highlighter/dist/esm/languages/prism/bash'
@@ -10,7 +10,7 @@ import markup from 'react-syntax-highlighter/dist/esm/languages/prism/markup'
 import tsx from 'react-syntax-highlighter/dist/esm/languages/prism/tsx'
 import typescript from 'react-syntax-highlighter/dist/esm/languages/prism/typescript'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
-import { BrowserRouter, Link, Navigate, Route, Routes, useParams } from 'react-router-dom'
+import { BrowserRouter, Link, Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom'
 import { trainingWeeks, type TrainingWeek } from './content/exercises'
 import { ExerciseDay } from './components/ExerciseDay'
 import { CompletionButton } from './components/CompletionButton'
@@ -92,6 +92,20 @@ const markdownComponents: Components = {
 type ThemeProps = { dark: boolean; onToggle: () => void }
 const routerBasename = import.meta.env.BASE_URL === '/' ? undefined : import.meta.env.BASE_URL.replace(/\/$/, '')
 
+type DebugExerciseModule = { default: ComponentType }
+type DebugExercise = {
+  path: string
+  load: () => Promise<DebugExerciseModule>
+}
+
+// Vite discovers new TSX/JSX exercises automatically; no per-file imports or route registration needed.
+const debugExercises: DebugExercise[] = Object.entries(
+  import.meta.glob<DebugExerciseModule>('./training/**/*.{tsx,jsx}'),
+).map(([path, load]) => ({
+  path: path.replace('./training/', ''),
+  load,
+})).sort((left, right) => left.path.localeCompare(right.path, undefined, { numeric: true }))
+
 function ThemeIcon({ dark }: { dark: boolean }) {
   return dark ? (
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42" /></svg>
@@ -105,6 +119,110 @@ function ThemeControl({ dark, onToggle }: ThemeProps) {
     <button className="theme-toggle" type="button" onClick={onToggle} aria-label={dark ? '切换浅色主题' : '切换深色主题'} aria-pressed={dark} title={dark ? '切换浅色主题' : '切换深色主题'}>
       <ThemeIcon dark={dark} />
     </button>
+  )
+}
+
+type DebugErrorBoundaryProps = { file: string; children: ReactNode }
+type DebugErrorBoundaryState = { error: Error | null }
+
+class DebugErrorBoundary extends Component<DebugErrorBoundaryProps, DebugErrorBoundaryState> {
+  state: DebugErrorBoundaryState = { error: null }
+
+  static getDerivedStateFromError(error: Error): DebugErrorBoundaryState {
+    return { error }
+  }
+
+  componentDidUpdate(previousProps: DebugErrorBoundaryProps) {
+    if (previousProps.file !== this.props.file && this.state.error) {
+      this.setState({ error: null })
+    }
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children
+
+    return (
+      <div className="debug-error" role="alert">
+        <span className="debug-error-icon" aria-hidden="true">!</span>
+        <div>
+          <h3>这个练习运行时报错了</h3>
+          <p>{this.props.file}</p>
+          <pre>{this.state.error.message}</pre>
+        </div>
+      </div>
+    )
+  }
+}
+
+function TrainingDebugPage({ dark, onToggle }: ThemeProps) {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedPath = searchParams.get('file')
+  const selected = debugExercises.find((exercise) => exercise.path === requestedPath) ?? debugExercises[0]
+  const [previewKey, setPreviewKey] = useState(0)
+  const ExerciseComponent = useMemo(() => selected ? lazy(selected.load) : null, [selected])
+
+  const selectExercise = (path: string) => {
+    setSearchParams({ file: path })
+    setPreviewKey((key) => key + 1)
+  }
+
+  return (
+    <div className={`app-shell ${dark ? 'theme-dark' : ''}`}>
+      <ThemeControl dark={dark} onToggle={onToggle} />
+      <main className="debug-page section-wrap">
+        <Link className="back-link" to="/"><span aria-hidden="true">←</span>返回训练计划</Link>
+        <div className="debug-hero">
+          <div>
+            <p className="eyebrow"><span />LIVE EXERCISE WORKBENCH</p>
+            <h1>练习调试台</h1>
+            <p>自动发现 <code>.tsx</code> 和 <code>.jsx</code> 文件。新建文件并默认导出组件后，它会自动出现在这里。</p>
+          </div>
+          <span className="debug-count"><strong>{debugExercises.length}</strong><small>个练习</small></span>
+        </div>
+
+        {debugExercises.length === 0 ? (
+          <div className="debug-empty">
+            <h2>还没有可调试的练习</h2>
+            <p>请在 <code>src/training</code> 下创建一个默认导出 React 组件的 <code>.tsx</code> 或 <code>.jsx</code> 文件。</p>
+          </div>
+        ) : (
+          <div className="debug-layout">
+            <aside className="debug-sidebar" aria-label="练习文件列表">
+              <div className="debug-sidebar-heading">练习文件</div>
+              <nav className="debug-file-list">
+                {debugExercises.map((exercise) => (
+                  <button
+                    className={`debug-file-button ${exercise === selected ? 'is-selected' : ''}`}
+                    key={exercise.path}
+                    type="button"
+                    onClick={() => selectExercise(exercise.path)}
+                  >
+                    <span className="debug-file-dot" aria-hidden="true" />
+                    <span>{exercise.path}</span>
+                  </button>
+                ))}
+              </nav>
+            </aside>
+
+            <section className="debug-preview" aria-live="polite">
+              <div className="debug-preview-bar">
+                <span><b>正在调试</b>{selected?.path}</span>
+                <button type="button" onClick={() => setPreviewKey((key) => key + 1)}>重置组件</button>
+              </div>
+              <div className="debug-canvas" key={`${selected?.path}-${previewKey}`}>
+                {ExerciseComponent && selected && (
+                  <DebugErrorBoundary file={selected.path}>
+                    <Suspense fallback={<p className="debug-loading">正在加载练习…</p>}>
+                      <ExerciseComponent />
+                    </Suspense>
+                  </DebugErrorBoundary>
+                )}
+              </div>
+            </section>
+          </div>
+        )}
+      </main>
+    </div>
   )
 }
 
@@ -128,7 +246,7 @@ function HomePage({ dark, onToggle, progress }: ThemeProps & { progress: Exercis
         <section className="roadmap" id="roadmap">
           <div className="section-title">
             <div><span className="home-brand">myFuturePath</span><h1>6 周训练题单</h1></div>
-            <p>点击卡片查看每天的题目与代码练习。</p>
+            <p>点击卡片查看每天的题目与代码练习。<Link className="debug-inline-link" to="/debug">打开练习调试台 <span aria-hidden="true">↗</span></Link></p>
           </div>
           {progress.saveError && <p className="progress-error" role="alert">暂时无法保存到本地，当前进度仅在本次页面中保留。</p>}
           <div className="timeline">
@@ -208,7 +326,7 @@ function App() {
   }, [dark])
 
   const themeProps = { dark, onToggle: () => setDark((value) => !value) }
-  return <BrowserRouter basename={routerBasename}><Routes><Route path="/" element={<HomePage {...themeProps} progress={progress} />} /><Route path="/week/:weekId" element={<WeekPage {...themeProps} progress={progress} />} /></Routes></BrowserRouter>
+  return <BrowserRouter basename={routerBasename}><Routes><Route path="/" element={<HomePage {...themeProps} progress={progress} />} /><Route path="/week/:weekId" element={<WeekPage {...themeProps} progress={progress} />} /><Route path="/debug" element={<TrainingDebugPage {...themeProps} />} /></Routes></BrowserRouter>
 }
 
 export default App
