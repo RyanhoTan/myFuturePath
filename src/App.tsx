@@ -97,6 +97,7 @@ type DebugExercise = {
   path: string
   load: () => Promise<DebugExerciseModule>
 }
+type TrainingNote = { path: string; markdown: string }
 
 // Vite discovers new TSX/JSX exercises automatically; no per-file imports or route registration needed.
 const debugExercises: DebugExercise[] = Object.entries(
@@ -105,6 +106,26 @@ const debugExercises: DebugExercise[] = Object.entries(
   path: path.replace('./training/', ''),
   load,
 })).sort((left, right) => left.path.localeCompare(right.path, undefined, { numeric: true }))
+
+const trainingNotes: TrainingNote[] = Object.entries(
+  import.meta.glob<string>('./training/**/*.md', { query: '?raw', import: 'default', eager: true }),
+).map(([path, markdown]) => ({
+  path: path.replace('./training/', ''),
+  markdown,
+})).sort((left, right) => left.path.localeCompare(right.path, undefined, { numeric: true }))
+
+function noteForDay(notes: TrainingNote[], weekNumber: number, dayNumber: number) {
+  return notes.find((note) => {
+    if (!note.path.startsWith(`week${weekNumber}/`)) return false
+    const match = note.path.match(/\/day(\d+)(?:-(\d+))?\.md$/)
+    return match && dayNumber >= Number(match[1]) && dayNumber <= Number(match[2] ?? match[1])
+  })
+}
+
+function noteForExercise(path: string) {
+  const match = path.match(/^week(\d+)\/day(\d+)\.(?:tsx|jsx)$/)
+  return match ? noteForDay(trainingNotes, Number(match[1]), Number(match[2])) : undefined
+}
 
 function ThemeIcon({ dark }: { dark: boolean }) {
   return dark ? (
@@ -167,6 +188,7 @@ function TrainingDebugWorkbench({ exercises = debugExercises, initialExercisePat
     ?? exercises[0]
   const [previewKey, setPreviewKey] = useState(0)
   const ExerciseComponent = useMemo(() => selected ? lazy(selected.load) : null, [selected])
+  const relatedNote = selected ? noteForExercise(selected.path) : undefined
 
   const selectExercise = (path: string) => {
     setSearchParams({ file: path })
@@ -202,7 +224,10 @@ function TrainingDebugWorkbench({ exercises = debugExercises, initialExercisePat
       <section className="debug-preview" aria-live="polite">
         <div className="debug-preview-bar">
           <span><b>正在调试</b>{selected?.path}</span>
-          <button type="button" onClick={() => setPreviewKey((key) => key + 1)}>重置组件</button>
+          <div className="debug-preview-actions">
+            {relatedNote && <Link to={`/notes?file=${encodeURIComponent(relatedNote.path)}`}>查看笔记</Link>}
+            <button type="button" onClick={() => setPreviewKey((key) => key + 1)}>重置组件</button>
+          </div>
         </div>
         <div className="debug-canvas" key={`${selected?.path}-${previewKey}`}>
           {ExerciseComponent && selected && (
@@ -214,6 +239,68 @@ function TrainingDebugWorkbench({ exercises = debugExercises, initialExercisePat
           )}
         </div>
       </section>
+    </div>
+  )
+}
+
+function TrainingNoteWorkbench({ notes, selectedPath, onSelect }: { notes: TrainingNote[]; selectedPath?: string; onSelect: (path: string) => void }) {
+  const selected = notes.find((note) => note.path === selectedPath) ?? notes[0]
+
+  if (!selected) return (
+    <div className="debug-empty">
+      <h2>还没有 Markdown 笔记</h2>
+      <p>在 <code>src/training/week1</code> 等周目录下创建 <code>.md</code> 文件，保存后就能在这里阅读。</p>
+    </div>
+  )
+
+  return (
+    <div className="notes-layout">
+      <aside className="notes-sidebar" aria-label="Markdown 笔记列表">
+        <div className="notes-sidebar-heading">笔记文件</div>
+        <nav className="notes-file-list">
+          {notes.map((note) => (
+            <button
+              className={`notes-file-button ${note === selected ? 'is-selected' : ''}`}
+              key={note.path}
+              type="button"
+              aria-current={note === selected ? 'page' : undefined}
+              onClick={() => onSelect(note.path)}
+            >
+              <span className="notes-file-icon" aria-hidden="true">≡</span>
+              <span>{note.path}</span>
+            </button>
+          ))}
+        </nav>
+      </aside>
+      <article className="notes-document" aria-label={`笔记 ${selected.path}`}>
+        <div className="notes-document-bar"><span>MARKDOWN NOTE</span><code>{selected.path}</code></div>
+        <div className="markdown-content notes-markdown" key={selected.path}>
+          <ReactMarkdown components={markdownComponents}>{selected.markdown}</ReactMarkdown>
+        </div>
+      </article>
+    </div>
+  )
+}
+
+function TrainingNotesPage({ dark, onToggle }: ThemeProps) {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const selectedPath = searchParams.get('file') ?? undefined
+
+  return (
+    <div className={`app-shell ${dark ? 'theme-dark' : ''}`}>
+      <ThemeControl dark={dark} onToggle={onToggle} />
+      <main className="notes-page section-wrap">
+        <Link className="back-link" to="/"><span aria-hidden="true">←</span>返回训练计划</Link>
+        <div className="notes-hero">
+          <div>
+            <p className="eyebrow"><span />TRAINING NOTES</p>
+            <h1>Markdown 笔记</h1>
+            <p>按训练日整理的复盘与易错点。选择左侧文件即可阅读，新增的 <code>.md</code> 笔记也会自动出现在列表中。</p>
+          </div>
+          <span className="notes-count"><strong>{trainingNotes.length}</strong><small>篇笔记</small></span>
+        </div>
+        <TrainingNoteWorkbench notes={trainingNotes} selectedPath={selectedPath} onSelect={(path) => setSearchParams({ file: path })} />
+      </main>
     </div>
   )
 }
@@ -259,7 +346,7 @@ function HomePage({ dark, onToggle, progress }: ThemeProps & { progress: Exercis
         <section className="roadmap" id="roadmap">
           <div className="section-title">
             <div><span className="home-brand">myFuturePath</span><h1>6 周训练题单</h1></div>
-            <p>点击卡片查看每天的题目与代码练习。<Link className="debug-inline-link" to="/debug">打开练习调试台 <span aria-hidden="true">↗</span></Link></p>
+            <p>点击卡片查看每天的题目与代码练习。<span className="home-quick-links"><Link to="/debug">打开练习调试台 <span aria-hidden="true">↗</span></Link><Link to="/notes">查看 Markdown 笔记 <span aria-hidden="true">↗</span></Link></span></p>
           </div>
           {progress.saveError && <p className="progress-error" role="alert">暂时无法保存到本地，当前进度仅在本次页面中保留。</p>}
           <div className="timeline">
@@ -289,7 +376,7 @@ function WeekPage({ dark, onToggle, progress }: ThemeProps & { progress: Exercis
   const [searchParams, setSearchParams] = useSearchParams()
   const plan = plans.find((item) => item.id === weekId)
   const week = trainingWeeks.find((item) => item.number === Number(plan?.week))
-  const [debugOpen, setDebugOpen] = useState(false)
+  const [activePanel, setActivePanel] = useState<'debug' | 'notes' | null>(null)
 
   useEffect(() => {
     window.scrollTo({ top: 0 })
@@ -299,8 +386,10 @@ function WeekPage({ dark, onToggle, progress }: ThemeProps & { progress: Exercis
 
   const finishedDays = week.days.filter((day) => progress.completed[day.id]).length
   const weekDebugExercises = debugExercises.filter((exercise) => exercise.path.startsWith(`week${week.number}/`))
+  const weekNotes = trainingNotes.filter((note) => note.path.startsWith(`week${week.number}/`))
   const initialDebugExercise = weekDebugExercises.find((exercise) => exercise.path.includes(`day${week.days[0]?.number}.`))?.path
   const selectedDebugExercise = searchParams.get('file') ?? initialDebugExercise
+  const selectedNotePath = searchParams.get('note') ?? weekNotes[0]?.path
 
   const findDayDebugExercise = (dayNumber: number) => weekDebugExercises.find(
     (exercise) => exercise.path.endsWith(`/day${dayNumber}.tsx`) || exercise.path.endsWith(`/day${dayNumber}.jsx`),
@@ -309,11 +398,28 @@ function WeekPage({ dark, onToggle, progress }: ThemeProps & { progress: Exercis
   const toggleDebugForDay = (dayNumber: number) => {
     const dayExercise = findDayDebugExercise(dayNumber)
     if (dayExercise && dayExercise.path !== selectedDebugExercise) {
-      setSearchParams({ file: dayExercise.path })
-      setDebugOpen(true)
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current)
+        next.set('file', dayExercise.path)
+        return next
+      })
+      setActivePanel('debug')
       return
     }
-    setDebugOpen((open) => !open)
+    setActivePanel((panel) => panel === 'debug' ? null : 'debug')
+  }
+
+  const toggleNoteForDay = (note: TrainingNote) => {
+    if (note.path !== selectedNotePath) {
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current)
+        next.set('note', note.path)
+        return next
+      })
+      setActivePanel('notes')
+      return
+    }
+    setActivePanel((panel) => panel === 'notes' ? null : 'notes')
   }
 
   return (
@@ -331,34 +437,41 @@ function WeekPage({ dark, onToggle, progress }: ThemeProps & { progress: Exercis
           <WeekCompletionButton key={week.number} week={week} progress={progress} />
         </div>
         {progress.saveError && <p className="progress-error" role="alert">暂时无法保存到本地，当前进度仅在本次页面中保留。</p>}
-        <div className={`detail-workspace ${debugOpen ? 'is-debug-open' : ''}`}>
+        <div className={`detail-workspace ${activePanel ? 'is-debug-open' : ''}`}>
           <div className="detail-main-content">
             {week.intro && <div className="markdown-content week-note"><ReactMarkdown components={markdownComponents}>{week.intro}</ReactMarkdown></div>}
             <div className="day-list">
               {week.days.map((day) => {
+                const dayNote = noteForDay(weekNotes, week.number, day.number)
                 const dayDebugExercise = findDayDebugExercise(day.number)
                 const isSelectedDebugExercise = dayDebugExercise?.path === selectedDebugExercise
-                const debugActionLabel = debugOpen && dayDebugExercise && !isSelectedDebugExercise
+                const debugActionLabel = activePanel === 'debug' && dayDebugExercise && !isSelectedDebugExercise
                   ? `切换到 Day ${day.number} 的调试台`
-                  : `${debugOpen ? '收起' : '展开'}练习调试台，Day ${day.number}`
+                  : `${activePanel === 'debug' ? '收起' : '展开'}练习调试台，Day ${day.number}`
                 return <ExerciseDay
                   key={day.id}
                   day={day}
                   progress={progress}
                   components={markdownComponents}
-                  headerAction={<button
-                    className={`day-debug-toggle ${debugOpen ? 'is-open' : ''}`}
+                  headerAction={<>{dayNote && <button
+                    className={`day-note-toggle ${activePanel === 'notes' && selectedNotePath === dayNote.path ? 'is-open' : ''}`}
+                    type="button"
+                    aria-label={`${activePanel === 'notes' && selectedNotePath === dayNote.path ? '收起' : '查看'} Day ${day.number} 笔记`}
+                    aria-expanded={activePanel === 'notes' && selectedNotePath === dayNote.path}
+                    onClick={() => toggleNoteForDay(dayNote)}
+                  ><span aria-hidden="true">▤</span>笔记</button>}<button
+                    className={`day-debug-toggle ${activePanel === 'debug' ? 'is-open' : ''}`}
                     type="button"
                     aria-label={debugActionLabel}
-                    aria-expanded={debugOpen}
+                    aria-expanded={activePanel === 'debug'}
                     onClick={() => toggleDebugForDay(day.number)}
-                  ><span aria-hidden="true">&lt;/&gt;</span>调试台</button>}
+                  ><span aria-hidden="true">&lt;/&gt;</span>调试台</button></>}
                 />
               })}
             </div>
             {week.outro && <div className="markdown-content week-note"><ReactMarkdown components={markdownComponents}>{week.outro}</ReactMarkdown></div>}
           </div>
-          {debugOpen && (
+          {activePanel === 'debug' && (
             <aside className="week-debug-panel" id="week-debug-panel" aria-label="练习调试台">
               <div className="week-debug-panel-heading">
                 <div>
@@ -366,9 +479,22 @@ function WeekPage({ dark, onToggle, progress }: ThemeProps & { progress: Exercis
                   <h2>练习调试台</h2>
                   <p>编辑 <code>src/training</code> 下的练习后，保存即可在这里查看运行结果。</p>
                 </div>
-                <button type="button" className="week-debug-close" aria-label="收起练习调试台" onClick={() => setDebugOpen(false)}>×</button>
+                <button type="button" className="week-debug-close" aria-label="收起练习调试台" onClick={() => setActivePanel(null)}>×</button>
               </div>
               <TrainingDebugWorkbench exercises={weekDebugExercises} initialExercisePath={selectedDebugExercise} />
+            </aside>
+          )}
+          {activePanel === 'notes' && (
+            <aside className="week-debug-panel week-notes-panel" id="week-notes-panel" aria-label="本周 Markdown 笔记">
+              <div className="week-debug-panel-heading">
+                <div><p className="eyebrow"><span />TRAINING NOTES</p><h2>本周笔记</h2><p>选择文件查看复盘与易错点。</p></div>
+                <button type="button" className="week-debug-close" aria-label="收起笔记" onClick={() => setActivePanel(null)}>×</button>
+              </div>
+              <TrainingNoteWorkbench notes={weekNotes} selectedPath={selectedNotePath} onSelect={(path) => setSearchParams((current) => {
+                const next = new URLSearchParams(current)
+                next.set('note', path)
+                return next
+              })} />
             </aside>
           )}
         </div>
@@ -394,7 +520,7 @@ function App() {
   }, [dark])
 
   const themeProps = { dark, onToggle: () => setDark((value) => !value) }
-  return <BrowserRouter basename={routerBasename}><Routes><Route path="/" element={<HomePage {...themeProps} progress={progress} />} /><Route path="/week/:weekId" element={<WeekPage {...themeProps} progress={progress} />} /><Route path="/debug" element={<TrainingDebugPage {...themeProps} />} /></Routes></BrowserRouter>
+  return <BrowserRouter basename={routerBasename}><Routes><Route path="/" element={<HomePage {...themeProps} progress={progress} />} /><Route path="/week/:weekId" element={<WeekPage {...themeProps} progress={progress} />} /><Route path="/debug" element={<TrainingDebugPage {...themeProps} />} /><Route path="/notes" element={<TrainingNotesPage {...themeProps} />} /></Routes></BrowserRouter>
 }
 
 export default App
